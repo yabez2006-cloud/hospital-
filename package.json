@@ -1,0 +1,12 @@
+{
+  "name": "hospital-management",
+  "private": true,
+  "scripts": {
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "dev": "node scripts/dev.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2"
+  }
+}

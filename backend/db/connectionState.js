@@ -1,0 +1,3 @@
+module.exports = {
+  isMongoConnected: false,
+};
