@@ -1,8 +1,10 @@
 const express = require("express");
 const Appointment = require("../models/Appointment");
 const Doctor = require("../models/Doctor");
+const Patient = require("../models/Patient");
 const memoryStore = require("../db/memoryStore");
 const connectionState = require("../db/connectionState");
+const { authenticate, requireRole } = require("../middleware/auth");
 const router = express.Router();
 
 async function getDoctorById(doctorId) {
@@ -30,13 +32,29 @@ async function ensureAvailableDoctor(req, res) {
   return doctorId;
 }
 
-router.get("/", async (req, res) => {
+router.get("/", authenticate, async (req, res) => {
   try {
     let appointments;
-    if (connectionState.isMongoConnected) {
-      appointments = await Appointment.find().populate("patient doctor").maxTimeMS(5000);
+    if (req.user.role === "admin") {
+      appointments = connectionState.isMongoConnected
+        ? await Appointment.find().populate("patient doctor").maxTimeMS(5000)
+        : await memoryStore.appointments.find();
+    } else if (req.user.role === "doctor") {
+      const doctor = connectionState.isMongoConnected
+        ? await Doctor.findOne({ username: req.user.username }).maxTimeMS(5000)
+        : await memoryStore.doctors.findOne({ username: req.user.username });
+      const doctorId = doctor?._id;
+      appointments = connectionState.isMongoConnected
+        ? await Appointment.find({ doctor: doctorId }).populate("patient doctor").maxTimeMS(5000)
+        : (await memoryStore.appointments.find()).filter((appointment) => String(appointment.doctor) === String(doctorId));
     } else {
-      appointments = await memoryStore.appointments.find();
+      const patient = connectionState.isMongoConnected
+        ? await Patient.findOne({ username: req.user.username }).maxTimeMS(5000)
+        : await memoryStore.patients.findOne({ username: req.user.username });
+      const patientId = patient?._id;
+      appointments = connectionState.isMongoConnected
+        ? await Appointment.find({ patient: patientId }).populate("patient doctor").maxTimeMS(5000)
+        : (await memoryStore.appointments.find()).filter((appointment) => String(appointment.patient) === String(patientId));
     }
     res.json(appointments);
   } catch (error) {
@@ -51,7 +69,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", authenticate, requireRole("admin"), async (req, res) => {
   try {
     const doctorId = await ensureAvailableDoctor(req, res);
     if (!doctorId) return;
@@ -79,7 +97,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", authenticate, async (req, res) => {
   try {
     let appointment;
     if (connectionState.isMongoConnected) {
@@ -88,6 +106,25 @@ router.get("/:id", async (req, res) => {
       appointment = await memoryStore.appointments.findById(req.params.id);
     }
     if (!appointment) return res.status(404).json({ error: "Appointment not found" });
+
+    if (req.user.role === "doctor") {
+      const doctor = connectionState.isMongoConnected
+        ? await Doctor.findOne({ username: req.user.username }).maxTimeMS(5000)
+        : await memoryStore.doctors.findOne({ username: req.user.username });
+      if (String(appointment.doctor?._id || appointment.doctor) !== String(doctor?._id)) {
+        return res.status(403).json({ message: "You do not have permission to view this appointment" });
+      }
+    }
+
+    if (req.user.role === "patient") {
+      const patient = connectionState.isMongoConnected
+        ? await Patient.findOne({ username: req.user.username }).maxTimeMS(5000)
+        : await memoryStore.patients.findOne({ username: req.user.username });
+      if (String(appointment.patient?._id || appointment.patient) !== String(patient?._id)) {
+        return res.status(403).json({ message: "You do not have permission to view this appointment" });
+      }
+    }
+
     res.json(appointment);
   } catch (error) {
     console.warn("Appointment.findById() error, using memory store:", error.message);
@@ -102,7 +139,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticate, requireRole("admin"), async (req, res) => {
   try {
     const doctorId = await ensureAvailableDoctor(req, res);
     if (!doctorId) return;
@@ -128,7 +165,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticate, requireRole("admin"), async (req, res) => {
   try {
     let appointment;
     if (connectionState.isMongoConnected) {

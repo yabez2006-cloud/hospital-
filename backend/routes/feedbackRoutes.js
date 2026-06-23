@@ -2,10 +2,11 @@ const express = require("express");
 const Feedback = require("../models/Feedback");
 const memoryStore = require("../db/memoryStore");
 const connectionState = require("../db/connectionState");
+const { authenticate, requireRole } = require("../middleware/auth");
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
+router.get("/", authenticate, requireRole("admin"), async (req, res) => {
   try {
     let feedbacks;
     if (connectionState.isMongoConnected) {
@@ -21,7 +22,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.post("/", authenticate, requireRole("patient"), async (req, res) => {
   try {
     let feedback;
     if (connectionState.isMongoConnected) {

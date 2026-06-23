@@ -1,17 +1,30 @@
 // In-memory store for when MongoDB is unavailable
+let users = [];
 let patients = [];
 let doctors = [];
 let appointments = [];
 let feedbacks = [];
+let nextUserId = 1;
 let nextPatientId = 1;
 let nextDoctorId = 1;
 let nextAppointmentId = 1;
 let nextFeedbackId = 1;
 
 module.exports = {
+  users: {
+    find: () => Promise.resolve(users),
+    findOne: (query) => Promise.resolve(users.find((user) => Object.entries(query).every(([key, value]) => user[key] === value))),
+    findById: (id) => Promise.resolve(users.find((user) => user._id == id)),
+    create: (data) => {
+      const user = { _id: nextUserId++, ...data };
+      users.push(user);
+      return Promise.resolve(user);
+    },
+  },
   patients: {
     find: () => Promise.resolve(patients),
     findById: (id) => Promise.resolve(patients.find((p) => p._id == id)),
+    findOne: (query) => Promise.resolve(patients.find((patient) => Object.entries(query).every(([key, value]) => patient[key] === value))),
     count: () => patients.length,
     create: (data) => {
       const patient = { _id: nextPatientId++, ...data };
@@ -34,6 +47,7 @@ module.exports = {
   doctors: {
     find: () => Promise.resolve(doctors),
     findById: (id) => Promise.resolve(doctors.find((d) => d._id == id)),
+    findOne: (query) => Promise.resolve(doctors.find((doctor) => Object.entries(query).every(([key, value]) => doctor[key] === value))),
     count: () => doctors.length,
     create: (data) => {
       const doctor = { _id: nextDoctorId++, ...data };

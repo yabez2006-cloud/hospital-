@@ -4,34 +4,112 @@ const Doctor = require("../models/Doctor");
 const Appointment = require("../models/Appointment");
 const memoryStore = require("../db/memoryStore");
 const connectionState = require("../db/connectionState");
+const { authenticate } = require("../middleware/auth");
 
 const router = express.Router();
 
-router.get("/", async (req, res) => {
+function getCrowdStatus(count) {
+  if (count > 50) return "High";
+  if (count > 20) return "Medium";
+  return "Low";
+}
+
+async function countAppointments(query = {}) {
+  if (connectionState.isMongoConnected) {
+    return Appointment.countDocuments(query);
+  }
+
+  const appointments = await memoryStore.appointments.find();
+  return appointments.filter((appointment) =>
+    Object.entries(query).every(([key, value]) => String(appointment[key]) === String(value))
+  ).length;
+}
+
+async function getAppointments(query = {}) {
+  if (connectionState.isMongoConnected) {
+    return Appointment.find(query).populate("patient doctor").maxTimeMS(5000);
+  }
+
+  const appointments = await memoryStore.appointments.find();
+  return appointments.filter((appointment) =>
+    Object.entries(query).every(([key, value]) => String(appointment[key]) === String(value))
+  );
+}
+
+async function countDoctors(query = {}) {
+  if (connectionState.isMongoConnected) {
+    return Doctor.countDocuments(query);
+  }
+
+  const doctors = await memoryStore.doctors.find();
+  return doctors.filter((doctor) => Object.entries(query).every(([key, value]) => String(doctor[key]) === String(value))).length;
+}
+
+router.get("/", authenticate, async (req, res) => {
   try {
-    const patients = connectionState.isMongoConnected
-      ? await Patient.countDocuments()
-      : memoryStore.patients.count();
-    const doctors = connectionState.isMongoConnected
-      ? await Doctor.countDocuments()
-      : memoryStore.doctors.count();
-    const appointments = connectionState.isMongoConnected
-      ? await Appointment.countDocuments()
-      : memoryStore.appointments.count();
+    const { role, username } = req.user;
+    const allAppointments = await getAppointments();
+    const crowdStatus = getCrowdStatus(allAppointments.length);
 
-    let crowdStatus = "Low";
-    if (appointments > 20) crowdStatus = "Medium";
-    if (appointments > 50) crowdStatus = "High";
+    if (role === "admin") {
+      const patients = connectionState.isMongoConnected ? await Patient.countDocuments() : memoryStore.patients.count();
+      const doctors = connectionState.isMongoConnected ? await Doctor.countDocuments() : memoryStore.doctors.count();
 
-    res.json({ patients, doctors, appointments, crowdStatus });
+      return res.json({
+        role,
+        patients,
+        doctors,
+        appointments: allAppointments.length,
+        crowdStatus,
+      });
+    }
+
+    if (role === "doctor") {
+      const doctor = connectionState.isMongoConnected
+        ? await Doctor.findOne({ username }).maxTimeMS(5000)
+        : await memoryStore.doctors.findOne({ username });
+
+      const doctorId = doctor?._id;
+      const doctorAppointments = doctorId ? await getAppointments({ doctor: doctorId }) : [];
+      const patientIds = new Set(
+        doctorAppointments.map((appointment) => String(appointment.patient?._id || appointment.patient)).filter(Boolean)
+      );
+
+      return res.json({
+        role,
+        appointments: doctorAppointments.length,
+        availabilityStatus: doctor?.availability || "Available",
+        patientsAssigned: patientIds.size,
+        crowdStatus,
+      });
+    }
+
+    const patient = connectionState.isMongoConnected
+      ? await Patient.findOne({ username }).populate("favoriteDoctor").maxTimeMS(5000)
+      : await memoryStore.patients.findOne({ username });
+
+    const patientAppointments = patient ? await countAppointments({ patient: patient._id }) : 0;
+    const favoriteDoctor =
+      patient?.favoriteDoctor && !connectionState.isMongoConnected
+        ? await memoryStore.doctors.findById(patient.favoriteDoctor)
+        : patient?.favoriteDoctor || null;
+
+    return res.json({
+      role,
+      doctors: await countDoctors({ availability: "Available" }),
+      appointments: patientAppointments,
+      favoriteDoctor,
+      crowdStatus,
+    });
   } catch (error) {
-    const patients = memoryStore.patients.count();
-    const doctors = memoryStore.doctors.count();
-    const appointments = memoryStore.appointments.count();
-    let crowdStatus = "Low";
-    if (appointments > 20) crowdStatus = "Medium";
-    if (appointments > 50) crowdStatus = "High";
-    res.json({ patients, doctors, appointments, crowdStatus });
+    const appointments = await memoryStore.appointments.find();
+    res.json({
+      role: req.user.role,
+      patients: memoryStore.patients.count(),
+      doctors: memoryStore.doctors.count(),
+      appointments: appointments.length,
+      crowdStatus: getCrowdStatus(appointments.length),
+    });
   }
 });
 

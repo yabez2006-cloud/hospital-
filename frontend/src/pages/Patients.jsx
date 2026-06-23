@@ -1,8 +1,12 @@
 import { useEffect, useState } from "react";
+import { Navigate } from "react-router-dom";
 import { fetchPatients, createPatient, deletePatient } from "../api";
 import PatientForm from "../components/PatientForm";
+import { getAuthUser } from "../auth";
 
 export default function Patients() {
+  const user = getAuthUser();
+  const role = user?.role || "admin";
   const [patients, setPatients] = useState([]);
   const [error, setError] = useState("");
 
@@ -15,8 +19,12 @@ export default function Patients() {
   };
 
   useEffect(() => {
+    if (role !== "admin") {
+      return;
+    }
+
     loadPatients();
-  }, []);
+  }, [role]);
 
   const handleCreate = async (data) => {
     try {
@@ -32,15 +40,21 @@ export default function Patients() {
     loadPatients();
   };
 
+  if (role !== "admin") {
+    return <Navigate to="/dashboard" replace />;
+  }
+
   return (
     <section>
-      <PatientForm onSubmit={handleCreate} />
+      {role === "admin" ? <PatientForm onSubmit={handleCreate} /> : null}
       {error && <div className="error">{error}</div>}
-      <h2>Patients</h2>
+      <h2>Patient Management</h2>
       <ul>
         {patients.map((patient) => (
           <li key={patient._id}>
-            {patient.name} — {patient.age} — {patient.gender} — {patient.phone}
+            <span>
+              {patient.name} — {patient.age} — {patient.gender} — {patient.phone}
+            </span>
             <button onClick={() => handleDelete(patient._id)}>Delete</button>
           </li>
         ))}

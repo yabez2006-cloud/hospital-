@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 export default function PatientForm({ onSubmit }) {
-  const [form, setForm] = useState({ name: "", age: "", gender: "", phone: "" });
+  const [form, setForm] = useState({ name: "", username: "", age: "", gender: "", phone: "" });
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -11,14 +11,16 @@ export default function PatientForm({ onSubmit }) {
   const submit = (event) => {
     event.preventDefault();
     onSubmit({ ...form, age: Number(form.age) });
-    setForm({ name: "", age: "", gender: "", phone: "" });
+    setForm({ name: "", username: "", age: "", gender: "", phone: "" });
   };
 
   return (
     <form onSubmit={submit}>
-      <h2>Add Patient</h2>
+      <h2>Create Patient</h2>
       <label>Name</label>
       <input name="name" value={form.name} onChange={handleChange} required />
+      <label>Username</label>
+      <input name="username" value={form.username} onChange={handleChange} required />
       <label>Age</label>
       <input name="age" type="number" value={form.age} onChange={handleChange} required />
       <label>Gender</label>

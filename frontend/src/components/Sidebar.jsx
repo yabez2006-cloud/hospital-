@@ -7,6 +7,8 @@ import {
   FaCommentDots,
   FaSignOutAlt,
   FaHospital,
+  FaHeart,
+  FaHeartbeat,
 } from "react-icons/fa";
 
 function SidebarLink({ to, icon, children }) {
@@ -21,7 +23,33 @@ function SidebarLink({ to, icon, children }) {
   );
 }
 
-export default function Sidebar({ onLogout }) {
+export default function Sidebar({ role = "admin", onLogout }) {
+  const navigation = {
+    admin: [
+      { to: "/dashboard", icon: <FaHome />, label: "Dashboard" },
+      { to: "/patients", icon: <FaUserInjured />, label: "Patient Management" },
+      { to: "/doctors", icon: <FaUserMd />, label: "Doctor Management" },
+      { to: "/appointments", icon: <FaCalendarCheck />, label: "Appointment Booking" },
+      { to: "/feedback", icon: <FaCommentDots />, label: "View Feedback" },
+      { to: "/dashboard", icon: <FaHospital />, label: "Crowd Meter" },
+    ],
+    doctor: [
+      { to: "/dashboard", icon: <FaHome />, label: "Dashboard" },
+      { to: "/doctor-profile", icon: <FaUserMd />, label: "My Profile" },
+      { to: "/doctor-profile", icon: <FaHeartbeat />, label: "Availability Status" },
+      { to: "/appointments", icon: <FaCalendarCheck />, label: "My Appointments" },
+    ],
+    patient: [
+      { to: "/dashboard", icon: <FaHome />, label: "Dashboard" },
+      { to: "/doctors", icon: <FaUserMd />, label: "View Doctors" },
+      { to: "/favorite-doctors", icon: <FaHeart />, label: "Favorite Doctors" },
+      { to: "/feedback", icon: <FaCommentDots />, label: "Give Feedback" },
+      { to: "/dashboard", icon: <FaHospital />, label: "Crowd Meter" },
+    ],
+  };
+
+  const links = navigation[role] || navigation.admin;
+
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -30,26 +58,16 @@ export default function Sidebar({ onLogout }) {
         </div>
         <div>
           <h2>Hospital Management</h2>
-          <p>Admin control center</p>
+          <p>{role === "doctor" ? "Doctor workspace" : role === "patient" ? "Patient workspace" : "Admin control center"}</p>
         </div>
       </div>
 
       <nav>
-        <SidebarLink to="/home" icon={<FaHome />}>
-          Dashboard
-        </SidebarLink>
-        <SidebarLink to="/patients" icon={<FaUserInjured />}>
-          Patient Management
-        </SidebarLink>
-        <SidebarLink to="/doctors" icon={<FaUserMd />}>
-          Doctor Management
-        </SidebarLink>
-        <SidebarLink to="/appointments" icon={<FaCalendarCheck />}>
-          Appointment Booking
-        </SidebarLink>
-        <SidebarLink to="/feedback" icon={<FaCommentDots />}>
-          Feedback
-        </SidebarLink>
+        {links.map((link) => (
+          <SidebarLink key={link.label} to={link.to} icon={link.icon}>
+            {link.label}
+          </SidebarLink>
+        ))}
 
         <button type="button" className="sidebar-logout" onClick={onLogout}>
           <FaSignOutAlt />

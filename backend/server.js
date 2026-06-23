@@ -28,9 +28,13 @@ app.use("/api/feedback", feedbackRoutes);
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
+    const connectionState = require("./db/connectionState");
+    connectionState.isMongoConnected = true;
     console.log("✅ MongoDB Connected Successfully");
   })
   .catch((err) => {
+    const connectionState = require("./db/connectionState");
+    connectionState.isMongoConnected = false;
     console.error("❌ MongoDB Connection Error:");
     console.error(err);
   });

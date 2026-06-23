@@ -1,3 +1,5 @@
+import { getAuthToken } from "./auth";
+
 const CONFIG_BASE = import.meta.env.VITE_API_URL || null;
 
 const CANDIDATE_BASES = [
@@ -32,6 +34,10 @@ async function tryFetch(url, options) {
 
 async function request(path, options = {}) {
   const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
+  const token = getAuthToken();
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
   const opts = { ...options, headers };
 
   let lastError;
@@ -68,6 +74,8 @@ export const deletePatient = (id) => request(`/patients/${id}`, { method: "DELET
 export const fetchDoctors = () => request("/doctors");
 export const createDoctor = (data) => request("/doctors", { method: "POST", body: JSON.stringify(data) });
 export const deleteDoctor = (id) => request(`/doctors/${id}`, { method: "DELETE" });
+export const fetchMyDoctorProfile = () => request("/doctors/me");
+export const updateMyDoctorProfile = (data) => request("/doctors/me", { method: "PATCH", body: JSON.stringify(data) });
 
 export const fetchAppointments = () => request("/appointments");
 export const createAppointment = (data) => request("/appointments", { method: "POST", body: JSON.stringify(data) });
@@ -78,5 +86,12 @@ export const fetchDashboard = () => request("/dashboard");
 export const fetchFeedback = () => request("/feedback");
 export const createFeedback = (data) => request("/feedback", { method: "POST", body: JSON.stringify(data) });
 
-export const loginUser = (credentials) => apiPost("/auth/login", credentials);
+export const fetchMyPatientProfile = () => request("/patients/me");
+export const updateFavoriteDoctor = (doctorId) =>
+  request("/patients/me/favorite-doctor", { method: "PATCH", body: JSON.stringify({ favoriteDoctor: doctorId }) });
+
+export const loginAdmin = (credentials) => apiPost("/auth/admin-login", credentials);
+export const loginDoctor = (credentials) => apiPost("/auth/doctor-login", credentials);
+export const loginPatient = (credentials) => apiPost("/auth/patient-login", credentials);
+export const loginUser = (credentials) => apiPost("/auth/admin-login", credentials);
 export const registerUser = (credentials) => apiPost("/auth/register", credentials);

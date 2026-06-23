@@ -1,10 +1,38 @@
 const express = require("express");
+const User = require("../models/User");
 const Patient = require("../models/Patient");
+const Doctor = require("../models/Doctor");
 const memoryStore = require("../db/memoryStore");
 const connectionState = require("../db/connectionState");
+const { authenticate, requireRole } = require("../middleware/auth");
 const router = express.Router();
 
-router.get("/", async (req, res) => {
+async function createUser(data) {
+  if (connectionState.isMongoConnected) {
+    const user = new User(data);
+    return user.save();
+  }
+
+  return memoryStore.users.create(data);
+}
+
+async function findPatientByUsername(username) {
+  if (connectionState.isMongoConnected) {
+    return Patient.findOne({ username }).maxTimeMS(5000);
+  }
+
+  return memoryStore.patients.findOne({ username });
+}
+
+async function findDoctorById(doctorId) {
+  if (connectionState.isMongoConnected) {
+    return Doctor.findById(doctorId).maxTimeMS(5000);
+  }
+
+  return memoryStore.doctors.findById(doctorId);
+}
+
+router.get("/", authenticate, requireRole("admin"), async (req, res) => {
   try {
     let patients;
     if (connectionState.isMongoConnected) {
@@ -25,16 +53,70 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.post("/", async (req, res) => {
+router.get("/me", authenticate, requireRole("patient"), async (req, res) => {
   try {
+    const patient = await findPatientByUsername(req.user.username);
+    if (!patient) {
+      return res.status(404).json({ message: "Patient profile not found" });
+    }
+
+    const favoriteDoctor = patient.favoriteDoctor ? await findDoctorById(patient.favoriteDoctor) : null;
+    res.json({ ...patient, favoriteDoctor });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.patch("/me/favorite-doctor", authenticate, requireRole("patient"), async (req, res) => {
+  try {
+    const { favoriteDoctor } = req.body;
+    const patient = await findPatientByUsername(req.user.username);
+    if (!patient) {
+      return res.status(404).json({ message: "Patient profile not found" });
+    }
+
+    let updatedPatient;
+    if (connectionState.isMongoConnected) {
+      updatedPatient = await Patient.findByIdAndUpdate(patient._id, { favoriteDoctor }, { new: true }).maxTimeMS(5000);
+    } else {
+      updatedPatient = await memoryStore.patients.findByIdAndUpdate(patient._id, { favoriteDoctor });
+    }
+
+    const resolvedFavoriteDoctor = favoriteDoctor ? await findDoctorById(favoriteDoctor) : null;
+    res.json({ ...updatedPatient, favoriteDoctor: resolvedFavoriteDoctor });
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
+router.post("/", authenticate, requireRole("admin"), async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    let user = null;
+
+    if (password) {
+      const existingUser = await User.findOne({ username }).maxTimeMS(5000);
+      if (existingUser) {
+        return res.status(400).json({ message: "Username already exists" });
+      }
+
+      user = await createUser({ username, password, role: "patient" });
+    }
+
     let patient;
     if (connectionState.isMongoConnected) {
-      patient = new Patient(req.body);
+      patient = new Patient({
+        ...req.body,
+        user: user?._id,
+      });
       patient = await patient.save().catch(() => {
         throw new Error("MongoDB unavailable");
       });
     } else {
-      patient = await memoryStore.patients.create(req.body);
+      patient = await memoryStore.patients.create({
+        ...req.body,
+        user: user?._id,
+      });
     }
     res.status(201).json(patient);
   } catch (error) {
@@ -49,7 +131,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/:id", authenticate, requireRole("admin"), async (req, res) => {
   try {
     let patient;
     if (connectionState.isMongoConnected) {
@@ -72,7 +154,7 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticate, requireRole("admin"), async (req, res) => {
   try {
     let patient;
     if (connectionState.isMongoConnected) {
@@ -95,7 +177,7 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticate, requireRole("admin"), async (req, res) => {
   try {
     let patient;
     if (connectionState.isMongoConnected) {

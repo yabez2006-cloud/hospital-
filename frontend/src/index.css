@@ -481,3 +481,75 @@ li button {
     margin-bottom: 12px;
   }
 }
+
+.auth-subtitle {
+  margin: -10px 0 18px;
+  text-align: center;
+  color: rgba(33, 37, 41, 0.72);
+}
+
+.login-landing-card {
+  max-width: 560px;
+}
+
+.login-landing-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.portal-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 88px;
+  padding: 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(13, 110, 253, 0.12);
+  background: linear-gradient(180deg, rgba(13, 110, 253, 0.06), rgba(32, 201, 151, 0.08));
+  color: #0f172a;
+  font-weight: 700;
+  text-align: center;
+}
+
+.portal-card.portal-register {
+  background: linear-gradient(180deg, rgba(32, 201, 151, 0.12), rgba(13, 110, 253, 0.06));
+}
+
+.availability-group {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.availability-group label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 0;
+}
+
+.favorites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.favorite-doctor-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #dbeafe;
+  background: #f8fbff;
+  color: #0f172a;
+  text-align: left;
+}
+
+.favorite-doctor-card.active {
+  border-color: #0d6efd;
+  box-shadow: 0 10px 24px rgba(13, 110, 253, 0.12);
+}
