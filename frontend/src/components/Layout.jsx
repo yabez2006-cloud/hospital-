@@ -1,6 +1,9 @@
 import { Outlet, useNavigate } from "react-router-dom";
 import Sidebar from "./Sidebar";
 import { clearAuthSession, getAuthUser } from "../auth";
+import { useEffect } from "react";
+import { connectSocket } from "../utils/socket";
+import useNotifications from "../hooks/useNotifications";
 
 export default function Layout() {
   const navigate = useNavigate();
@@ -11,6 +14,15 @@ export default function Layout() {
     clearAuthSession();
     navigate("/");
   };
+
+  useEffect(() => {
+    const user = getAuthUser();
+    if (user) {
+      connectSocket(user._id || user.id || user.username);
+    }
+  }, []);
+
+  useNotifications();
 
   return (
     <div className="app-shell">

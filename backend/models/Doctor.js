@@ -9,6 +9,7 @@ const doctorSchema = new mongoose.Schema({
     enum: ["Available", "Unavailable"],
     default: "Available",
   },
+  visitedPatients: [{ type: mongoose.Schema.Types.ObjectId, ref: "Patient" }],
   user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 });
 

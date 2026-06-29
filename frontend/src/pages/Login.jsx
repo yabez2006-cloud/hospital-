@@ -16,11 +16,8 @@ function Login() {
           <Link className="portal-card" to="/doctor-login">
             <span>Doctor Login</span>
           </Link>
-          <Link className="portal-card" to="/patient-login">
-            <span>Patient Login</span>
-          </Link>
-          <Link className="portal-card portal-register" to="/register">
-            <span>Patient Register</span>
+          <Link className="portal-card portal-patient" to="/patient-login">
+            <span>Patient Login & Register</span>
           </Link>
         </div>
       </div>

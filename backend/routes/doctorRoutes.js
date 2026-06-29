@@ -2,6 +2,7 @@ const express = require("express");
 const Doctor = require("../models/Doctor");
 const User = require("../models/User");
 const memoryStore = require("../db/memoryStore");
+const Patient = require("../models/Patient");
 const connectionState = require("../db/connectionState");
 const { authenticate, requireRole } = require("../middleware/auth");
 const router = express.Router();
@@ -56,9 +57,76 @@ router.get("/me", authenticate, requireRole("doctor"), async (req, res) => {
   try {
     const doctor = await findDoctorByUsername(req.user.username);
     if (!doctor) return res.status(404).json({ message: "Doctor profile not found" });
+    // populate visitedPatients when using MongoDB
+    if (connectionState.isMongoConnected) {
+      const full = await Doctor.findById(doctor._id).populate('visitedPatients').maxTimeMS(5000);
+      return res.json(full);
+    }
     res.json(doctor);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Get visited patients list for current doctor
+router.get('/me/visited', authenticate, requireRole('doctor'), async (req, res) => {
+  try {
+    const doctor = await findDoctorByUsername(req.user.username);
+    if (!doctor) return res.status(404).json({ message: 'Doctor profile not found' });
+
+    if (connectionState.isMongoConnected) {
+      const full = await Doctor.findById(doctor._id).populate('visitedPatients').maxTimeMS(5000);
+      return res.json(full.visitedPatients || []);
+    }
+
+    // memory store fallback: doctor record may contain visitedPatients array of ids
+    const allPatients = await memoryStore.patients.find();
+    const visited = (doctor.visitedPatients || []).map((id) => allPatients.find((p) => String(p._id) === String(id))).filter(Boolean);
+    res.json(visited);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Doctor adds a patient to their visited list by id or username
+router.post('/me/visited', authenticate, requireRole('doctor'), async (req, res) => {
+  try {
+    const { patientId, username } = req.body;
+    const doctor = await findDoctorByUsername(req.user.username);
+    if (!doctor) return res.status(404).json({ message: 'Doctor profile not found' });
+
+    let patient;
+    if (patientId) {
+      patient = connectionState.isMongoConnected ? await Patient.findById(patientId).maxTimeMS(5000) : await memoryStore.patients.findById(patientId);
+    } else if (username) {
+      patient = await findPatientByUsername(username);
+    }
+
+    if (!patient) return res.status(404).json({ message: 'Patient not found' });
+
+    if (connectionState.isMongoConnected) {
+      // avoid duplicates
+      const doc = await Doctor.findById(doctor._id).maxTimeMS(5000);
+      const exists = (doc.visitedPatients || []).some((id) => String(id) === String(patient._id));
+      if (!exists) {
+        doc.visitedPatients = doc.visitedPatients || [];
+        doc.visitedPatients.push(patient._id);
+        await doc.save();
+      }
+      const full = await Doctor.findById(doctor._id).populate('visitedPatients').maxTimeMS(5000);
+      return res.json(full.visitedPatients || []);
+    }
+
+    // memory store fallback
+    const memDoc = await memoryStore.doctors.findOne({ username: req.user.username });
+    memDoc.visitedPatients = memDoc.visitedPatients || [];
+    if (!memDoc.visitedPatients.some((id) => String(id) === String(patient._id))) {
+      memDoc.visitedPatients.push(patient._id);
+    }
+    const allPatients = await memoryStore.patients.find();
+    res.json((memDoc.visitedPatients || []).map((id) => allPatients.find((p) => String(p._id) === String(id))).filter(Boolean));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

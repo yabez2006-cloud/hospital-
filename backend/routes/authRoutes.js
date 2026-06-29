@@ -60,9 +60,15 @@ async function handleRoleLogin(req, res, expectedRole) {
   const { username, password } = req.body;
   const usernameNotFoundMessage = { message: "Username not exists" };
 
-  if (expectedRole === "admin" && username === "admin123" && password === "1234") {
-    const admin = await ensureDefaultAdmin();
-    return sendAuthResponse(res, admin);
+  if (expectedRole === "admin" && username === "admin123") {
+    if (password === "1234") {
+      const admin = await ensureDefaultAdmin();
+      return sendAuthResponse(res, admin);
+    } else {
+      return res.status(400).json({
+        message: "Wrong password",
+      });
+    }
   }
 
   const user = await findUserByUsername(username);
@@ -73,7 +79,7 @@ async function handleRoleLogin(req, res, expectedRole) {
 
   if (user.password !== password) {
     return res.status(400).json({
-      message: "Enter correct password",
+      message: "Wrong password",
     });
   }
 
@@ -82,7 +88,7 @@ async function handleRoleLogin(req, res, expectedRole) {
 
 // Register
 router.post("/register", async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password, name } = req.body;
 
   const existingUser = await findUserByUsername(username);
 
@@ -100,7 +106,7 @@ router.post("/register", async (req, res) => {
 
   await createPatientProfile({
     username,
-    name: username,
+    name: name || username,
     age: 0,
     gender: "Unspecified",
     phone: "",

@@ -73,6 +73,7 @@ export const deletePatient = (id) => request(`/patients/${id}`, { method: "DELET
 
 export const fetchDoctors = () => request("/doctors");
 export const createDoctor = (data) => request("/doctors", { method: "POST", body: JSON.stringify(data) });
+export const updateDoctor = (id, data) => request(`/doctors/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const deleteDoctor = (id) => request(`/doctors/${id}`, { method: "DELETE" });
 export const fetchMyDoctorProfile = () => request("/doctors/me");
 export const updateMyDoctorProfile = (data) => request("/doctors/me", { method: "PATCH", body: JSON.stringify(data) });
@@ -80,6 +81,17 @@ export const updateMyDoctorProfile = (data) => request("/doctors/me", { method: 
 export const fetchAppointments = () => request("/appointments");
 export const createAppointment = (data) => request("/appointments", { method: "POST", body: JSON.stringify(data) });
 export const deleteAppointment = (id) => request(`/appointments/${id}`, { method: "DELETE" });
+export const bookAppointment = (data) => request(`/appointments/book`, { method: "POST", body: JSON.stringify(data) });
+export const approveAppointment = (id) => request(`/appointments/${id}/approve`, { method: "POST" });
+export const rejectAppointment = (id) => request(`/appointments/${id}/reject`, { method: "POST" });
+export const completeAppointment = (id) => request(`/appointments/${id}/complete`, { method: "POST" });
+
+export const fetchMyDoctors = () => request(`/appointments/my-doctors`);
+export const fetchMyPatients = () => request(`/appointments/my-patients`);
+export const fetchVisitedPatients = () => request(`/doctors/me/visited`);
+export const addVisitedPatient = (data) => request(`/doctors/me/visited`, { method: "POST", body: JSON.stringify(data) });
+export const fetchMyVisits = () => request(`/visits/me`);
+export const createVisit = (data) => request(`/visits`, { method: "POST", body: JSON.stringify(data) });
 
 export const fetchDashboard = () => request("/dashboard");
 
@@ -95,3 +107,46 @@ export const loginDoctor = (credentials) => apiPost("/auth/doctor-login", creden
 export const loginPatient = (credentials) => apiPost("/auth/patient-login", credentials);
 export const loginUser = (credentials) => apiPost("/auth/admin-login", credentials);
 export const registerUser = (credentials) => apiPost("/auth/register", credentials);
+
+// Availability
+export const createAvailability = (data) => request("/availability", { method: "POST", body: JSON.stringify(data) });
+export const fetchDoctorAvailability = (doctorId) => request(`/availability/doctor/${doctorId}`);
+export const fetchAvailabilityByDate = (dateStr) => request(`/availability/date/${dateStr}`);
+
+// Prescriptions
+export const createPrescription = (data) => request("/prescriptions", { method: "POST", body: JSON.stringify(data) });
+
+// Reports (multipart upload)
+export async function uploadReport(file, fields = {}) {
+  const token = getAuthToken();
+  const form = new FormData();
+  form.append("file", file);
+  Object.keys(fields || {}).forEach((k) => form.append(k, fields[k]));
+
+  const bases = CANDIDATE_BASES;
+  let lastErr;
+  for (const base of bases) {
+    try {
+      const res = await fetch(`${base}/reports/upload`, {
+        method: "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: form,
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || res.statusText || `HTTP ${res.status}`);
+      }
+      return await res.json();
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+export const fetchReportsByPatient = (patientId) => request(`/reports/patient/${patientId}`);
+
+// Favorites
+export const addFavorite = (data) => request(`/favorites`, { method: "POST", body: JSON.stringify(data) });
+export const getFavoritesByPatient = (patientId) => request(`/favorites/patient/${patientId}`);
+export const removeFavorite = (id) => request(`/favorites/${id}`, { method: "DELETE" });

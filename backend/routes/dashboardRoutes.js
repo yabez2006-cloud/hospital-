@@ -52,16 +52,40 @@ router.get("/", authenticate, async (req, res) => {
     const crowdStatus = getCrowdStatus(allAppointments.length);
 
     if (role === "admin") {
-      const patients = connectionState.isMongoConnected ? await Patient.countDocuments() : memoryStore.patients.count();
-      const doctors = connectionState.isMongoConnected ? await Doctor.countDocuments() : memoryStore.doctors.count();
+        const patients = connectionState.isMongoConnected ? await Patient.countDocuments() : memoryStore.patients.count();
+        const doctors = connectionState.isMongoConnected ? await Doctor.countDocuments() : memoryStore.doctors.count();
 
-      return res.json({
-        role,
-        patients,
-        doctors,
-        appointments: allAppointments.length,
-        crowdStatus,
-      });
+        // per-doctor stats
+        const doctorDocs = connectionState.isMongoConnected ? await Doctor.find().maxTimeMS(5000) : await memoryStore.doctors.find();
+        const doctorStats = await Promise.all(
+          doctorDocs.map(async (d) => {
+            const doctorId = d._id;
+            const appointments = await getAppointments({ doctor: doctorId });
+            const patientIds = new Set(appointments.map((a) => String(a.patient?._id || a.patient)).filter(Boolean));
+            // prescriptions and reports counts
+            const Prescription = require("../models/Prescription");
+            const MedicalReport = require("../models/MedicalReport");
+            const presCount = connectionState.isMongoConnected ? await Prescription.countDocuments({ doctor: doctorId }) : (await memoryStore.prescriptions.find()).filter((p) => String(p.doctor) === String(doctorId)).length;
+            const repCount = connectionState.isMongoConnected ? await MedicalReport.countDocuments({ doctor: doctorId }) : (await memoryStore.medicalReports.find()).filter((r) => String(r.doctor) === String(doctorId)).length;
+
+            return {
+              doctor: d.name,
+              patients: patientIds.size,
+              todaysPatients: appointments.filter((a) => new Date(a.date).toDateString() === new Date().toDateString()).length,
+              prescriptions: presCount,
+              reports: repCount,
+            };
+          })
+        );
+
+        return res.json({
+          role,
+          patients,
+          doctors,
+          appointments: allAppointments.length,
+          crowdStatus,
+          doctorStats,
+        });
     }
 
     if (role === "doctor") {

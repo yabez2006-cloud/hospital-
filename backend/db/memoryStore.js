@@ -3,6 +3,7 @@ let users = [];
 let patients = [];
 let doctors = [];
 let appointments = [];
+let visits = [];
 let feedbacks = [];
 let nextUserId = 1;
 let nextPatientId = 1;
@@ -88,6 +89,15 @@ module.exports = {
       return Promise.resolve(deleted);
     },
     count: () => appointments.length,
+  },
+  visits: {
+    find: () => Promise.resolve(visits),
+    findById: (id) => Promise.resolve(visits.find((v) => v._id == id)),
+    create: (data) => {
+      const visit = { _id: nextAppointmentId++, ...data };
+      visits.push(visit);
+      return Promise.resolve(visit);
+    },
   },
   feedbacks: {
     find: () => Promise.resolve(feedbacks),

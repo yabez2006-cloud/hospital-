@@ -27,7 +27,7 @@ export default function Dashboard() {
     loadDashboard();
   }, []);
 
-  const crowdClass = stats.crowdStatus.toLowerCase();
+  const crowdClass = (stats.crowdStatus || "low").toLowerCase();
 
   const cardSets = {
     admin: [
@@ -78,6 +78,27 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+      {stats.doctorStats && stats.doctorStats.length > 0 && (
+        <section style={{ marginTop: 20 }}>
+          <h3>Doctor Records</h3>
+          <table className="records-table">
+            <thead>
+              <tr><th>Doctor</th><th>Patients</th><th>Today's Patients</th><th>Prescriptions</th><th>Reports</th></tr>
+            </thead>
+            <tbody>
+              {stats.doctorStats.map((d) => (
+                <tr key={d.doctor}>
+                  <td>{d.doctor}</td>
+                  <td>{d.patients}</td>
+                  <td>{d.todaysPatients}</td>
+                  <td>{d.prescriptions}</td>
+                  <td>{d.reports}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
     </>
   );
 }

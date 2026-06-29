@@ -31,20 +31,21 @@ export default function Sidebar({ role = "admin", onLogout }) {
       { to: "/doctors", icon: <FaUserMd />, label: "Doctor Management" },
       { to: "/appointments", icon: <FaCalendarCheck />, label: "Appointment Booking" },
       { to: "/feedback", icon: <FaCommentDots />, label: "View Feedback" },
-      { to: "/dashboard", icon: <FaHospital />, label: "Crowd Meter" },
     ],
     doctor: [
       { to: "/dashboard", icon: <FaHome />, label: "Dashboard" },
       { to: "/doctor-profile", icon: <FaUserMd />, label: "My Profile" },
-      { to: "/doctor-profile", icon: <FaHeartbeat />, label: "Availability Status" },
+      { to: "/doctor-availability", icon: <FaHeartbeat />, label: "Availability Status" },
+      { to: "/doctor-visited-history", icon: <FaHeartbeat />, label: "Visited History" },
       { to: "/appointments", icon: <FaCalendarCheck />, label: "My Appointments" },
     ],
     patient: [
       { to: "/dashboard", icon: <FaHome />, label: "Dashboard" },
       { to: "/doctors", icon: <FaUserMd />, label: "View Doctors" },
       { to: "/favorite-doctors", icon: <FaHeart />, label: "Favorite Doctors" },
+      { to: "/appointments", icon: <FaCalendarCheck />, label: "My Appointments" },
+      { to: "/patient-profile", icon: <FaUserInjured />, label: "My Profile" },
       { to: "/feedback", icon: <FaCommentDots />, label: "Give Feedback" },
-      { to: "/dashboard", icon: <FaHospital />, label: "Crowd Meter" },
     ],
   };
 
@@ -52,6 +53,7 @@ export default function Sidebar({ role = "admin", onLogout }) {
 
   return (
     <aside className="sidebar">
+            <div id="notifications"></div>
       <div className="brand">
         <div className="brand-mark">
           <FaHospital />

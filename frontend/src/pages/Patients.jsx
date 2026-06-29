@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import { fetchPatients, createPatient, deletePatient } from "../api";
-import PatientForm from "../components/PatientForm";
+import { fetchPatients, deletePatient } from "../api";
 import { getAuthUser } from "../auth";
 
 export default function Patients() {
@@ -46,7 +45,7 @@ export default function Patients() {
 
   return (
     <section>
-      {role === "admin" ? <PatientForm onSubmit={handleCreate} /> : null}
+      {/* Admin patient creation removed — patients register themselves */}
       {error && <div className="error">{error}</div>}
       <h2>Patient Management</h2>
       <ul>

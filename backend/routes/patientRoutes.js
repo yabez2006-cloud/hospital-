@@ -61,7 +61,9 @@ router.get("/me", authenticate, requireRole("patient"), async (req, res) => {
     }
 
     const favoriteDoctor = patient.favoriteDoctor ? await findDoctorById(patient.favoriteDoctor) : null;
-    res.json({ ...patient, favoriteDoctor });
+    const patientData = connectionState.isMongoConnected && typeof patient.toObject === "function" ? patient.toObject() : patient;
+
+    res.json({ ...patientData, favoriteDoctor });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
